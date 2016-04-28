@@ -12,3 +12,8 @@ $ export AWS_ACCESS_KEY_ID=1234
 $ export AWS_SECRET_ACCESS_KEY=1234
 $ node .
 ```
+
+Then you can access kibana in your browser at...
+ ```
+ http://localhost:9200/_plugin/kibana/
+ ```
