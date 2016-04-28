@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 var AWS = require('aws-sdk');
 var http = require('http');
 var httpProxy = require('http-proxy');
@@ -8,71 +6,43 @@ var bodyParser = require('body-parser');
 var stream = require('stream');
 var figlet = require('figlet');
 
-var yargs = require('yargs')
-    .usage('usage: $0 [options] <aws-es-cluster-endpoint>')
-    .option('b', {
-        alias: 'bind-address',
-        default: '127.0.0.1',
-        demand: false,
-        describe: 'the ip address to bind to',
-        type: 'string'
-    })
-    .option('p', {
-        alias: 'port',
-        default: 9200,
-        demand: false,
-        describe: 'the port to bind to',
-        type: 'number'
-    })
-    .option('r', {
-        alias: 'region',
-        demand: false,
-        describe: 'the region of the Elasticsearch cluster',
-        type: 'string'
-    })
-    .help()
-    .version()
-    .strict();
-var argv = yargs.argv;
-
-if (argv._.length !== 1) {
-    yargs.showHelp();
-    process.exit(1);
-}
-
-var ENDPOINT = argv._[0];
+var ENDPOINT = process.env.ES_ENDPOINT;
 
 // Try to infer the region if it is not provided as an argument.
-var REGION = argv.r;
+var REGION = undefined;
 if (!REGION) {
     var m = ENDPOINT.match(/\.([^.]+)\.es\.amazonaws\.com\.?$/);
     if (m) {
         REGION = m[1];
     } else {
         console.error('region cannot be parsed from endpoint address, etiher the endpoint must end ' +
-                      'in .<region>.es.amazonaws.com or --region should be provided as an argument');
-        yargs.showHelp();
+            'in .<region>.es.amazonaws.com or --region should be provided as an argument');
         process.exit(1);
     }
 }
 
-var TARGET = argv._[0];
+var TARGET = ENDPOINT;
 if (!TARGET.match(/^https?:\/\//)) {
     TARGET = 'https://' + TARGET;
 }
 
-var BIND_ADDRESS = argv.b;
-var PORT = argv.p;
+var BIND_ADDRESS = 'localhost';
+var PORT = 9200;
 
-var creds;
+AWS.CredentialProviderChain.defaultProviders = [
+  function () { return new AWS.EnvironmentCredentials('AWS'); },
+]
+
 var chain = new AWS.CredentialProviderChain();
-chain.resolve(function (err, resolved) {
+var creds;
+chain.resolve(function(err, resolved) {
     if (err) throw err;
     else creds = resolved;
+    console.log(creds);
 });
 
 function getcreds(req, res, next) {
-    return creds.get(function (err) {
+    return creds.get(function(err) {
         if (err) return next(err);
         else return next();
     });
@@ -84,18 +54,22 @@ var proxy = httpProxy.createProxyServer({
 });
 
 var app = express();
-app.use(bodyParser.raw({type: '*/*'}));
+app.use(bodyParser.raw({
+    type: '*/*'
+}));
 app.use(getcreds);
-app.use(function (req, res) {
+app.use(function(req, res) {
     var bufferStream;
     if (Buffer.isBuffer(req.body)) {
         var bufferStream = new stream.PassThrough();
         bufferStream.end(req.body);
     }
-    proxy.web(req, res, {buffer: bufferStream});
+    proxy.web(req, res, {
+        buffer: bufferStream
+    });
 });
 
-proxy.on('proxyReq', function (proxyReq, req, res, options) {
+proxy.on('proxyReq', function(proxyReq, req, res, options) {
     var endpoint = new AWS.Endpoint(ENDPOINT);
     var request = new AWS.HttpRequest(endpoint);
     request.method = proxyReq.method;
@@ -115,7 +89,8 @@ proxy.on('proxyReq', function (proxyReq, req, res, options) {
     if (request.headers['x-amz-security-token']) proxyReq.setHeader('x-amz-security-token', request.headers['x-amz-security-token']);
 });
 
-http.createServer(app).listen(PORT, BIND_ADDRESS);
+//http.createServer(app).listen(PORT, BIND_ADDRESS);
+http.createServer(app).listen(PORT);
 
 console.log(figlet.textSync('AWS ES Proxy!', {
     font: 'Speed',

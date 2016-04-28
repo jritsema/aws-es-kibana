@@ -1,10 +1,9 @@
 {
   "name": "aws-es-kibana",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "AWS ElasticSearch/Kibana Proxy",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -25,9 +24,6 @@
   },
   "homepage": "https://github.com/santthosh/aws-es-kibana#readme",
   "preferGlobal": true,
-  "bin": {
-    "aws-es-kibana": "index.js"
-  },
   "dependencies": {
     "aws": "0.0.3-2",
     "aws-sdk": "^2.2.48",
