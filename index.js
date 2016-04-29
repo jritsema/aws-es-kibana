@@ -54,10 +54,20 @@ var proxy = httpProxy.createProxyServer({
 });
 
 var app = express();
+
 app.use(bodyParser.raw({
     type: '*/*'
 }));
+
 app.use(getcreds);
+
+app.use(function(req, res, next) {
+  if (req.originalUrl === '/hc')
+    res.send('I am healthy');
+  else
+    next();
+});
+
 app.use(function(req, res) {
     var bufferStream;
     if (Buffer.isBuffer(req.body)) {
@@ -88,6 +98,7 @@ proxy.on('proxyReq', function(proxyReq, req, res, options) {
     proxyReq.setHeader('Authorization', request.headers['Authorization']);
     if (request.headers['x-amz-security-token']) proxyReq.setHeader('x-amz-security-token', request.headers['x-amz-security-token']);
 });
+
 
 //http.createServer(app).listen(PORT, BIND_ADDRESS);
 http.createServer(app).listen(PORT);
